@@ -1,0 +1,18 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Java
+target/
+*.log
+
+# Env files
+.env
+.env.*
+
+# OS
+.DS_Store
