@@ -22,19 +22,20 @@ public class JwtService {
         return Keys.hmacShaKeyFor(secretKey.getBytes(StandardCharsets.UTF_8));
     }
 
-    public String generateAccessToken(String username) {
-        return buildToken(username, accessTokenExpiration);
+    public String generateAccessToken(String username, String role) {
+        return buildToken(username, accessTokenExpiration, role);
     }
 
-    public String generateRefreshToken(String username) {
-        return buildToken(username, refreshTokenExpiration);
+    public String generateRefreshToken(String username, String role) {
+        return buildToken(username, refreshTokenExpiration, role);
     }
 
-    private String buildToken(String username, long expiration) {
+    private String buildToken(String username, long expiration , String role) {
         return Jwts.builder()
                 .subject(username)
                 .issuedAt(new Date(System.currentTimeMillis()))
                 .expiration(new Date(System.currentTimeMillis() + expiration))
+                .claim("role", role)
                 .signWith(getSigningKey())
                 .compact();
     }

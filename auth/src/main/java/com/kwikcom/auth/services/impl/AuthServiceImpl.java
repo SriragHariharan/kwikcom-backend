@@ -1,17 +1,27 @@
 package com.kwikcom.auth.services.impl;
 
+import com.kwikcom.auth.dtos.AdminAuthResponse;
 import com.kwikcom.auth.dtos.AuthResponse;
 import com.kwikcom.auth.dtos.LoginRequest;
 import com.kwikcom.auth.dtos.RegisterRequest;
 import com.kwikcom.auth.models.User;
 import com.kwikcom.auth.repositories.UserRepository;
 import com.kwikcom.auth.services.AuthService;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class AuthServiceImpl implements AuthService {
+    
+    @Value("${application.security.admin.email}")
+    private String adminEmail;
 
+    @Value("${application.security.admin.password}")
+    private String adminPassword;
+    
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final com.kwikcom.auth.services.JwtService jwtService;
@@ -27,7 +37,7 @@ public class AuthServiceImpl implements AuthService {
     public void registerUser(RegisterRequest request) {
         try {
             if (userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("User already exists");
+                throw new IllegalStateException("User already exists");
             }
             var user = User.builder()
                     .username(request.getUsername())
@@ -35,35 +45,38 @@ public class AuthServiceImpl implements AuthService {
                     .password(passwordEncoder.encode(request.getPassword()))
                     .build();
             userRepository.save(user);
-        } catch (RuntimeException e) {
+        } catch (BadCredentialsException e) {
             throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to register user: " + e.getMessage(), e);
+            throw new IllegalStateException("Failed to register user: " + e.getMessage(), e);
         }
     }
 
     @Override
-    public com.kwikcom.auth.dtos.AuthResponse loginUser(LoginRequest request) {
-        try {
-            if (!userRepository.existsByEmail(request.getEmail())) {
-                throw new RuntimeException("Invalid User Credentials");
-            }
-            var user = userRepository.findByEmail(request.getEmail()).orElseThrow();
-            if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
-                throw new RuntimeException("Invalid User Credentials");
-            }
+    public AuthResponse loginUser(LoginRequest request) {
 
-            var accessToken = jwtService.generateAccessToken(user.getEmail());
-            var refreshToken = jwtService.generateRefreshToken(user.getEmail());
+        var user = userRepository.findByEmail(request.getEmail())
+            .orElseThrow(() -> new BadCredentialsException("Invalid credentials"));
 
-            return AuthResponse.builder()
-                    .accessToken(accessToken)
-                    .refreshToken(refreshToken)
-                    .build();
-        } catch (RuntimeException e) {
-            throw e;
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to login user: " + e.getMessage(), e);
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new BadCredentialsException("Invalid credentials");
         }
+        String role = "ROLE_USER";
+        return AuthResponse.builder()
+            .accessToken(jwtService.generateAccessToken(user.getEmail(), role))
+            .refreshToken(jwtService.generateRefreshToken(user.getEmail(), role))
+            .build();
+    }
+
+    @Override
+    public AdminAuthResponse loginAdmin(LoginRequest request){
+
+        if (!request.getEmail().equals(adminEmail) || !request.getPassword().equals(adminPassword)) {
+            throw new BadCredentialsException("Invalid credentials");
+        }
+        String role = "ROLE_ADMIN";
+        return AdminAuthResponse.builder()
+            .accessToken(jwtService.generateAccessToken(adminEmail, role))
+            .build();
     }
 }

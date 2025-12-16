@@ -45,18 +45,17 @@ public class AuthController {
 
         try {
             var authResponse = authService.loginUser(request);
-
+            System.out.println("AuthResponse: ");
+            System.out.println(authResponse);
             var accessTokenCookie = ResponseCookie.from("accessToken", authResponse.getAccessToken())
                     .httpOnly(true)
                     .secure(false) // Set to true in production
-                    .path("/")
                     .maxAge(60 * 60) // 1 Hour
                     .build();
 
             var refreshTokenCookie = ResponseCookie.from("refreshToken", authResponse.getRefreshToken())
                     .httpOnly(true)
                     .secure(false) // Set to true in production
-                    .path("/")
                     .maxAge(60 * 60 * 24 * 7) // 7 Days
                     .build();
 
