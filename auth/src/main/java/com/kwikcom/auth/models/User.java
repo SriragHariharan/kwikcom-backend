@@ -24,9 +24,14 @@ public class User {
     private String id;
 
     private String username;
-
-    @Column(unique = true)
+    
+    @Column(unique = true, nullable = false)
     private String email;
-
+    
+    @Column(nullable = false)
     private String password;
+    
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean isBlocked = false;
 }
